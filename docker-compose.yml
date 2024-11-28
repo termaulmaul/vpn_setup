@@ -1,0 +1,177 @@
+version: '3.8'
+
+services:
+  # WireGuard VPN
+  wireguard:
+    image: linuxserver/wireguard
+    container_name: wireguard
+    networks:
+      - vpn-network
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    ports:
+      - 51820:51820/udp
+    volumes:
+      - ./wireguard:/config
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Jakarta
+      - SERVERURL=raspberrypi.local
+      - SERVERPORT=51820
+      - PEERS=2  # Jumlah klien
+      - PEERDNS=1.1.1.1
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wireguard.rule=Host(`wireguard.raspberrypi.local`)"
+      - "traefik.http.services.wireguard.loadbalancer.server.port=51820"
+    restart: unless-stopped
+
+  # OpenVPN
+  openvpn:
+    image: darathor/openvpn
+    container_name: openvpn
+    networks:
+      - vpn-network
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - 1194:1194/udp
+    volumes:
+      - ./openvpn:/etc/openvpn
+    environment:
+      - TZ=Asia/Jakarta
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.openvpn.rule=Host(`openvpn.raspberrypi.local`)"
+      - "traefik.http.services.openvpn.loadbalancer.server.port=1194"
+    restart: unless-stopped
+
+  # Reverse Proxy (Traefik)
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+    ports:
+      - 80:80
+      - 443:443
+      - 8080:8080
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik:/etc/traefik
+    networks:
+      - vpn-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.raspberrypi.local`)"
+      - "traefik.http.services.traefik.loadbalancer.server.port=8080"
+    restart: unless-stopped
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    networks:
+      - vpn-network
+    ports:
+      - 3000:3000
+    volumes:
+      - ./grafana:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - TZ=Asia/Jakarta
+    user: "472:472"  # Jalankan dengan pengguna dan grup Grafana
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.raspberrypi.local`)"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+    restart: unless-stopped
+
+  # Portainer
+  portainer:
+    image: portainer/portainer-ce
+    container_name: portainer
+    networks:
+      - vpn-network
+    ports:
+      - 9000:9000
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portainer.rule=Host(`portainer.raspberrypi.local`)"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+    restart: unless-stopped
+
+  # Nginx Webserver for Home Page and Login
+  nginx:
+    image: nginx:latest
+    container_name: nginx-home
+    networks:
+      - vpn-network
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/auth.conf:/etc/nginx/conf.d/auth.conf
+      - ./nginx/.htpasswd:/etc/nginx/.htpasswd
+      - ./nginx:/usr/share/nginx/html
+    ports:
+      - 8081:80
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.home.rule=Host(`raspberrypi.local`)"
+    restart: unless-stopped
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    networks:
+      - vpn-network
+    ports:
+      - 9090:9090
+    volumes:
+      - ./prometheus:/etc/prometheus
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=Host(`prometheus.raspberrypi.local`)"
+    restart: unless-stopped
+
+  # Node Exporter
+  node_exporter:
+    image: prom/node-exporter
+    container_name: node_exporter
+    networks:
+      - vpn-network
+    ports:
+      - 9100:9100
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.node_exporter.rule=Host(`nodeexporter.raspberrypi.local`)"
+    restart: unless-stopped
+
+  # Blackbox Exporter
+  blackbox_exporter:
+    image: prom/blackbox-exporter
+    container_name: blackbox_exporter
+    networks:
+      - vpn-network
+    ports:
+      - 9115:9115
+    volumes:
+      - ./blackbox:/config
+    command:
+      - "--config.file=/config/blackbox.yml"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.blackbox.rule=Host(`blackbox.raspberrypi.local`)"
+    restart: unless-stopped
+
+networks:
+  vpn-network:
+    driver: bridge
