@@ -18,13 +18,13 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=Asia/Jakarta
-      - SERVERURL=raspberrypi.local
+      - SERVERURL=localhost
       - SERVERPORT=51820
       - PEERS=2  # Jumlah klien
       - PEERDNS=1.1.1.1
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.wireguard.rule=Host(`wireguard.raspberrypi.local`)"
+      - "traefik.http.routers.wireguard.rule=Host(`wireguard.localhost`)"
       - "traefik.http.services.wireguard.loadbalancer.server.port=51820"
     restart: unless-stopped
 
@@ -44,7 +44,7 @@ services:
       - TZ=Asia/Jakarta
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.openvpn.rule=Host(`openvpn.raspberrypi.local`)"
+      - "traefik.http.routers.openvpn.rule=Host(`openvpn.localhost`)"
       - "traefik.http.services.openvpn.loadbalancer.server.port=1194"
     restart: unless-stopped
 
@@ -68,7 +68,7 @@ services:
       - vpn-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.traefik.rule=Host(`traefik.raspberrypi.local`)"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.localhost`)"
       - "traefik.http.services.traefik.loadbalancer.server.port=8080"
     restart: unless-stopped
 
@@ -89,7 +89,7 @@ services:
     user: "472:472"  # Jalankan dengan pengguna dan grup Grafana
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.grafana.rule=Host(`grafana.raspberrypi.local`)"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.localhost`)"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
     restart: unless-stopped
 
@@ -105,7 +105,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.portainer.rule=Host(`portainer.raspberrypi.local`)"
+      - "traefik.http.routers.portainer.rule=Host(`portainer.localhost`)"
       - "traefik.http.services.portainer.loadbalancer.server.port=9000"
     restart: unless-stopped
 
@@ -124,7 +124,7 @@ services:
       - 8081:80
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.home.rule=Host(`raspberrypi.local`)"
+      - "traefik.http.routers.home.rule=Host(`localhost`)"
     restart: unless-stopped
 
   # Prometheus
@@ -139,7 +139,7 @@ services:
       - ./prometheus:/etc/prometheus
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.prometheus.rule=Host(`prometheus.raspberrypi.local`)"
+      - "traefik.http.routers.prometheus.rule=Host(`prometheus.localhost`)"
     restart: unless-stopped
 
   # Node Exporter
@@ -152,7 +152,7 @@ services:
       - 9100:9100
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.node_exporter.rule=Host(`nodeexporter.raspberrypi.local`)"
+      - "traefik.http.routers.node_exporter.rule=Host(`nodeexporter.localhost`)"
     restart: unless-stopped
 
   # Blackbox Exporter
@@ -169,7 +169,7 @@ services:
       - "--config.file=/config/blackbox.yml"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.blackbox.rule=Host(`blackbox.raspberrypi.local`)"
+      - "traefik.http.routers.blackbox.rule=Host(`blackbox.localhost`)"
     restart: unless-stopped
 
 networks:
